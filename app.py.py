@@ -1,127 +1,128 @@
 import streamlit as st
 import pandas as pd
-import base64 # Logoyu base64'e çevirmek için
-
-# --- SABİT DEĞİŞKENLER ---
-# Atasun Optik logosunun web adresi (Örnek URL, kendi logonuzla değiştirin)
-# Bu URL'yi kendi logonuzun internetteki bir linki ile değiştirmeniz gerekebilir
-ATASUN_LOGO_URL = "https://www.atasunoptik.com.tr/Assets/img/atasun-optik-logo.svg" 
+import io
 
 # --- SAYFA YAPILANDIRMASI ---
 st.set_page_config(page_title="Atasun Optik - Açık Kapora", layout="centered")
 
-# --- ARKA PLAN LOGOSU İÇİN CSS ---
-# Streamlit'e özel CSS enjeksiyonu
-st.markdown(
-    f"""
+# --- ATASUN TURUNCU TEMA (CSS) ---
+st.markdown("""
     <style>
-    .reportview-container {{
-        background: url({ATASUN_LOGO_URL}) no-repeat top left;
-        background-size: 150px; /* Logo boyutu */
-        background-position: 10px 10px; /* Logo konumu */
-        padding-top: 5rem; /* İçeriğin logonun altına inmesini sağlar */
-    }}
-    .sidebar .sidebar-content {{
-        background: url({ATASUN_LOGO_URL}) no-repeat;
-        background-size: 100px;
-        background-position: 10px 10px;
-    }}
+    /* Ana Arka Plan */
+    .stApp {
+        background-color: #FF671B; /* Atasun Turuncusu */
+    }
+    
+    /* Beyaz Kart Alanı */
+    .block-container {
+        background-color: rgba(255, 255, 255, 0.95);
+        padding: 2rem;
+        border-radius: 20px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        margin-top: 2rem;
+    }
+
+    /* Başlıklar */
+    h1, h3 {
+        color: #333333 !important;
+        font-family: 'Arial Black', sans-serif;
+        text-align: center;
+    }
+
+    /* Giriş Kutusu ve Butonlar */
+    .stTextInput>div>div>input {
+        border: 2px solid #FF671B;
+        border-radius: 10px;
+    }
+    
+    .stButton>button {
+        background-color: #333333 !important; /* Koyu Gri/Siyah Butonlar */
+        color: white !important;
+        border-radius: 10px !important;
+        border: none !important;
+        font-weight: bold;
+        transition: 0.3s;
+    }
+    
+    .stButton>button:hover {
+        background-color: #555555 !important;
+        transform: scale(1.02);
+    }
+
+    /* Uyarı Kutuları */
+    .stAlert {
+        border-radius: 10px;
+    }
     </style>
-    """,
-    unsafe_allow_html=True
-)
+    """, unsafe_allow_html=True)
 
-st.title("👓 Atasun Optik")
-st.subheader("Açık Kapora / Sipariş Kontrol Sistemi")
+# Üst Başlık ve Logo
+st.markdown("<h1 style='font-size: 40px;'>👓 ATASUN OPTİK</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center; color:#555;'>Açık Kapora Takip ve Kontrol Paneli</p>", unsafe_allow_html=True)
 
-# --- HAFIZA YÖNETİMİ ---
-# siparis_havuzu: Ana liste (kod ve diğer bilgilerle)
-# okutulan_siparis_kodlari: Sadece okutulan kodlar
-if 'siparis_havuzu' not in st.session_state:
-    st.session_state.siparis_havuzu = pd.DataFrame() # DataFrame olarak saklayacağız
-    st.session_state.okutulan_siparis_kodlari = set()
+# --- VERİ YÖNETİMİ ---
+if 'db' not in st.session_state:
+    st.session_state.db = pd.DataFrame()
+    st.session_state.okutulanlar = set()
 
 # --- 1. ADIM: LİSTE YÜKLEME ---
-yuklenen_dosya = st.file_uploader("Açık Kapora Listesini Yükleyin (Excel)", type=['xlsx'])
-
-if yuklenen_dosya:
-    try:
-        df_ana = pd.read_excel(yuklenen_dosya)
+with st.expander("📁 Excel Listesini Yükle", expanded=True):
+    yuklenen_dosya = st.file_uploader("", type=['xlsx'])
+    if yuklenen_dosya:
+        df_temp = pd.read_excel(yuklenen_dosya)
+        c1, c2 = st.columns(2)
+        s_no_col = c1.selectbox("Sipariş No Sütunu", df_temp.columns)
+        s_isim_col = c2.selectbox("İsim Sütunu", df_temp.columns)
         
-        # Excel'deki ilk iki sütunu kullanacağımızı varsayalım: 
-        # İlk sütun: Sipariş Kodu, İkinci Sütun: Müşteri Adı/Diğer Bilgi
-        if len(df_ana.columns) < 2:
-            st.error("Excel dosyanızda en az iki sütun olmalı: (1) Sipariş Kodu, (2) İsim/Açıklama.")
-        else:
-            # Sütun isimlerini kullanıcıya seçtirelim (daha esnek olur)
-            st.info("Lütfen Sipariş Numarası ve İsim sütunlarını seçin.")
-            col_siparis, col_isim = st.columns(2)
-            secilen_siparis_sutun = col_siparis.selectbox("Sipariş Numarası Sütunu", df_ana.columns)
-            secilen_isim_sutun = col_isim.selectbox("Müşteri/İsim Sütunu", df_ana.columns)
-
-            st.session_state.siparis_havuzu = df_ana[[secilen_siparis_sutun, secilen_isim_sutun]].copy()
-            st.session_state.siparis_havuzu.columns = ['SiparisKodu', 'Isim'] # Sütun isimlerini standartlaştır
-            st.session_state.siparis_havuzu['SiparisKodu'] = st.session_state.siparis_havuzu['SiparisKodu'].astype(str).str.strip().str.upper()
-            
-            st.success(f"✅ Liste Yüklendi: {len(st.session_state.siparis_havuzu)} adet bekleyen sipariş bulundu.")
-            
-    except Exception as e:
-        st.error(f"Excel okunurken hata oluştu: {e}. Lütfen dosya formatını kontrol edin.")
+        st.session_state.db = df_temp[[s_no_col, s_isim_col]].copy()
+        st.session_state.db.columns = ['kod', 'isim']
+        st.session_state.db['kod'] = st.session_state.db['kod'].astype(str).str.strip().str.upper()
+        st.success(f"✅ {len(st.session_state.db)} Kayıt Yüklendi.")
 
 st.divider()
 
 # --- 2. ADIM: OKUTMA FORMU ---
-if not st.session_state.siparis_havuzu.empty: # Eğer liste yüklendiyse okutma formunu göster
-    with st.form(key='barkod_form', clear_on_submit=True):
-        st.markdown("### 📲 Sipariş Numarasını Okutun")
-        siparis_no_giris = st.text_input("Giriş Yapın", placeholder="Barkodu buraya okutun...").strip().upper()
-        submit_button = st.form_submit_button(label='Kontrol Et')
+if not st.session_state.db.empty:
+    with st.form(key='scan_form', clear_on_submit=True):
+        st.markdown("### 📲 Sipariş No Okutun")
+        input_kod = st.text_input("", placeholder="Barkodu buraya vurun...").strip().upper()
+        submit = st.form_submit_button("SİSTEME SOR")
 
-    if submit_button and siparis_no_giris:
-        if siparis_no_giris in st.session_state.siparis_havuzu['SiparisKodu'].values:
-            ilgili_isim = st.session_state.siparis_havuzu[st.session_state.siparis_havuzu['SiparisKodu'] == siparis_no_giris]['Isim'].iloc[0]
-            st.success(f"✅ DOĞRU: {siparis_no_giris} - Müşteri: **{ilgili_isim}** - Listede var.")
-            if siparis_no_giris not in st.session_state.okutulan_siparis_kodlari:
-                st.session_state.okutulan_siparis_kodlari.add(siparis_no_giris) # Set'e ekle
+    if submit and input_kod:
+        match = st.session_state.db[st.session_state.db['kod'] == input_kod]
+        if not match.empty:
+            isim = match['isim'].iloc[0]
+            st.success(f"✅ LİSTEDE VAR: {input_kod} \n\n 👤 Müşteri: {isim}")
+            st.session_state.okutulanlar.add(input_kod)
         else:
-            st.error(f"❌ HATA: {siparis_no_giris} LİSTEDE BULUNAMADI!")
-else:
-    st.warning("Lütfen başlamadan önce 'Açık Kapora Listesi' Excel dosyasını yükleyin.")
+            st.error(f"❌ LİSTEDE YOK: {input_kod}")
 
-# --- 3. ADIM: RAPORLAMA VE İNDİRME ---
+# --- 3. ADIM: RAPORLAMA ---
 st.divider()
-col1, col2 = st.columns(2)
+col_a, col_b = st.columns(2)
 
-with col1:
-    if st.button("Sayımı Bitir ve Eksikleri Göster"):
-        okutulan_kodlar_set = st.session_state.okutulan_siparis_kodlari
-        
-        # Ana listedeki kodları okutulanlarla karşılaştır
-        eksik_df = st.session_state.siparis_havuzu[
-            ~st.session_state.siparis_havuzu['SiparisKodu'].isin(okutulan_kodlar_set)
-        ]
-        
+with col_a:
+    if st.button("📊 Eksikleri Raporla"):
+        eksik_df = st.session_state.db[~st.session_state.db['kod'].isin(st.session_state.okutulanlar)]
         if not eksik_df.empty:
-            st.warning(f"Sayılamayan / Eksik Sipariş: {len(eksik_df)} adet.")
+            st.warning(f"{len(eksik_df)} adet eksik bulundu.")
             st.dataframe(eksik_df, use_container_width=True)
-
-            # Eksik listesini Excel olarak indirilebilir hale getir
-            @st.cache_data # Veriyi önbelleğe al
-            def convert_df_to_excel(df_to_convert):
-                output = df_to_convert.to_excel(index=False, header=True, engine='xlsxwriter')
-                return output
-
-            excel_data = convert_df_to_excel(eksik_df)
+            
+            # Excel İndirme
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                eksik_df.to_excel(writer, index=False, sheet_name='Eksik_Listesi')
+            
             st.download_button(
-                label="Eksik Listesini Excel İndir",
-                data=excel_data,
-                file_name="Eksik_Siparis_Listesi.xlsx",
+                label="📥 Excel Olarak İndir",
+                data=output.getvalue(),
+                file_name="Atasun_Eksik_Siparisler.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
         else:
-            st.success("Tüm siparişler tamamlandı!")
+            st.success("Tebrikler, tüm siparişler tamam!")
 
-with col2:
-    if st.button("Sistemi Sıfırla / Yeni Listeyi Yükle"):
-        st.session_state.clear() # Tüm session state'i temizle
-        st.rerun() # Sayfayı yeniden yükle
+with col_b:
+    if st.button("🔄 Sayımı Sıfırla"):
+        st.session_state.okutulanlar = set()
+        st.rerun()

@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import io
+from fpdf import FPDF
 
 # --- SAYFA YAPILANDIRMASI ---
 st.set_page_config(page_title="Atasun Optik - Takip Paneli", layout="centered")
@@ -34,7 +35,6 @@ if 'db' not in st.session_state:
 with st.expander("📁 Ana Sipariş Listesini Yükle", expanded=True):
     yuklenen_dosya = st.file_uploader("", type=['xlsx'])
     if yuklenen_dosya:
-        # Excel okurken karakter tipini koruyoruz
         df_temp = pd.read_excel(yuklenen_dosya)
         st.info("Sütunları Eşleştirin:")
         c1, c2, c3 = st.columns(3)
@@ -44,8 +44,6 @@ with st.expander("📁 Ana Sipariş Listesini Yükle", expanded=True):
         
         db_df = df_temp[[s_no_col, s_isim_col, s_pers_col]].copy()
         db_df.columns = ['Sipariş No', 'Müşteri Adı', 'Personel No']
-        
-        # Sayısal temizlik (.0 kaldırma)
         db_df['Personel No'] = pd.to_numeric(db_df['Personel No'], errors='coerce').fillna(0).astype(int).astype(str)
         db_df['Sipariş No'] = db_df['Sipariş No'].astype(str).str.strip().str.upper()
         
@@ -71,6 +69,34 @@ if not st.session_state.db.empty:
         else:
             st.error(f"❌ LİSTEDE YOK: {input_kod}")
 
+# --- PDF OLUŞTURMA FONKSİYONU ---
+def create_pdf(df):
+    pdf = FPDF()
+    pdf.add_page()
+    # Standart bir font kullanıyoruz (PDF'de Türkçe karakter için en güvenli yol latin-1 uyumlu karakterlerdir)
+    pdf.set_font("Arial", 'B', 16)
+    pdf.cell(190, 10, txt="EKSİK SİPARİŞ LİSTESİ", ln=True, align='C')
+    pdf.set_font("Arial", size=10)
+    pdf.ln(10)
+    
+    # Başlıklar
+    pdf.cell(15, 10, "Sıra", 1)
+    pdf.cell(45, 10, "Sipariş No", 1)
+    pdf.cell(80, 10, "Müşteri Adı", 1)
+    pdf.cell(40, 10, "Personel No", 1)
+    pdf.ln()
+    
+    for index, row in df.iterrows():
+        pdf.cell(15, 10, str(row['Sıra No']), 1)
+        pdf.cell(45, 10, str(row['Sipariş No']), 1)
+        # Türkçe karakterleri PDF uyumlu hale getirmek için basit bir temizlik
+        isim_temiz = str(row['Müşteri Adı']).encode('latin-1', 'replace').decode('latin-1')
+        pdf.cell(80, 10, isim_temiz, 1)
+        pdf.cell(40, 10, str(row['Personel No']), 1)
+        pdf.ln()
+    
+    return pdf.output(dest='S').encode('latin-1')
+
 # --- 3. ADIM: RAPORLAMA VE İNDİRME ---
 st.divider()
 if st.button("📊 Eksikleri Listele"):
@@ -78,19 +104,22 @@ if st.button("📊 Eksikleri Listele"):
     
     if not eksik_df.empty:
         eksik_df.insert(0, 'Sıra No', range(1, len(eksik_df) + 1))
-        
         st.markdown("## 📋 EKSİK SİPARİŞ LİSTESİ")
-        st.warning(f"Toplam {len(eksik_df)} adet eksik tespit edildi.")
         st.dataframe(eksik_df, use_container_width=True, hide_index=True)
         
         st.markdown("### 📥 İndirme Seçenekleri")
         d_col1, d_col2 = st.columns(2)
         
         with d_col1:
-            st.info("📄 PDF: Yazdır (Ctrl+P) yaparak PDF kaydedebilirsiniz.")
+            pdf_output = create_pdf(eksik_df)
+            st.download_button(
+                label="📄 PDF Olarak İndir",
+                data=pdf_output,
+                file_name="Eksik_Siparis_Listesi.pdf",
+                mime="application/pdf"
+            )
             
         with d_col2:
-            # ÖNEMLİ: utf-8-sig Türkçe karakterlerin Excel'de düzgün açılmasını sağlar
             csv_data = eksik_df.to_csv(index=False, encoding='utf-8-sig', sep=';')
             st.download_button(
                 label="CVS (.csv) Olarak İndir",

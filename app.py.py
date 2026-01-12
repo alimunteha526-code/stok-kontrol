@@ -34,6 +34,7 @@ if 'db' not in st.session_state:
 with st.expander("📁 Ana Sipariş Listesini Yükle", expanded=True):
     yuklenen_dosya = st.file_uploader("", type=['xlsx'])
     if yuklenen_dosya:
+        # Excel okurken karakter tipini koruyoruz
         df_temp = pd.read_excel(yuklenen_dosya)
         st.info("Sütunları Eşleştirin:")
         c1, c2, c3 = st.columns(3)
@@ -41,11 +42,10 @@ with st.expander("📁 Ana Sipariş Listesini Yükle", expanded=True):
         s_isim_col = c2.selectbox("Müşteri İsim", df_temp.columns)
         s_pers_col = c3.selectbox("Personel No", df_temp.columns)
         
-        # Veriyi hazırla
         db_df = df_temp[[s_no_col, s_isim_col, s_pers_col]].copy()
         db_df.columns = ['Sipariş No', 'Müşteri Adı', 'Personel No']
         
-        # .0 SORUNUNU ÇÖZME: Personel No'yu tam sayıya çevir
+        # Sayısal temizlik (.0 kaldırma)
         db_df['Personel No'] = pd.to_numeric(db_df['Personel No'], errors='coerce').fillna(0).astype(int).astype(str)
         db_df['Sipariş No'] = db_df['Sipariş No'].astype(str).str.strip().str.upper()
         
@@ -77,7 +77,6 @@ if st.button("📊 Eksikleri Listele"):
     eksik_df = st.session_state.db[~st.session_state.db['Sipariş No'].isin(st.session_state.okutulanlar)].copy()
     
     if not eksik_df.empty:
-        # Sıra no ekle
         eksik_df.insert(0, 'Sıra No', range(1, len(eksik_df) + 1))
         
         st.markdown("## 📋 EKSİK SİPARİŞ LİSTESİ")
@@ -91,7 +90,7 @@ if st.button("📊 Eksikleri Listele"):
             st.info("📄 PDF: Yazdır (Ctrl+P) yaparak PDF kaydedebilirsiniz.")
             
         with d_col2:
-            # CVS (CSV) Aktarımı - UTF-8 BOM ve Noktalı Virgül
+            # ÖNEMLİ: utf-8-sig Türkçe karakterlerin Excel'de düzgün açılmasını sağlar
             csv_data = eksik_df.to_csv(index=False, encoding='utf-8-sig', sep=';')
             st.download_button(
                 label="CVS (.csv) Olarak İndir",

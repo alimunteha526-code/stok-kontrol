@@ -35,20 +35,26 @@ with st.expander("📁 Ana Sipariş Listesini Yükle", expanded=True):
     yuklenen_dosya = st.file_uploader("", type=['xlsx'])
     if yuklenen_dosya:
         df_temp = pd.read_excel(yuklenen_dosya)
-        c1, c2, c3 = st.columns(3)
-        s_no_col = c1.selectbox("Sipariş No", df_temp.columns)
-        s_isim_col = c2.selectbox("Müşteri Adı", df_temp.columns)
-        s_pers_col = c3.selectbox("Personel No", df_temp.columns)
         
-        db_df = df_temp[[s_no_col, s_isim_col, s_pers_col]].copy()
-        db_df.columns = ['Sipariş No', 'Müşteri Adı', 'Personel No']
+        # SABİT SÜTUNLAR
+        sabit_musteri_col = "Müşteri Adı"
+        sabit_personel_col = "Personel No"
         
-        # Sayısal temizlik ve metne dönüştürme (Karakter hatasını önlemek için)
-        db_df['Personel No'] = pd.to_numeric(db_df['Personel No'], errors='coerce').fillna(0).astype(int).astype(str)
-        db_df['Sipariş No'] = db_df['Sipariş No'].astype(str).str.strip().str.upper()
+        # Sadece Sipariş No sütununu seçtiriyoruz (Dosyadan dosyaya değişebilir diye)
+        s_no_col = st.selectbox("Lütfen 'Sipariş No' Sütununu Seçin", df_temp.columns)
         
-        st.session_state.db = db_df
-        st.success(f"✅ {len(st.session_state.db)} Kayıt Yüklendi.")
+        if sabit_musteri_col in df_temp.columns and sabit_personel_col in df_temp.columns:
+            db_df = df_temp[[s_no_col, sabit_musteri_col, sabit_personel_col]].copy()
+            db_df.columns = ['Sipariş No', 'Müşteri Adı', 'Personel No']
+            
+            # Personel No'daki .0 hatasını kaldır ve temizle
+            db_df['Personel No'] = pd.to_numeric(db_df['Personel No'], errors='coerce').fillna(0).astype(int).astype(str)
+            db_df['Sipariş No'] = db_df['Sipariş No'].astype(str).str.strip().str.upper()
+            
+            st.session_state.db = db_df
+            st.success(f"✅ {len(st.session_state.db)} Kayıt Başarıyla Yüklendi.")
+        else:
+            st.error(f"⚠️ Excel dosyasında '{sabit_musteri_col}' ve '{sabit_personel_col}' sütunları bulunamadı! Lütfen Excel başlıklarını kontrol edin.")
 
 st.divider()
 
@@ -84,20 +90,14 @@ if st.button("📊 Eksikleri Listele"):
         with col_pdf:
             pdf = FPDF()
             pdf.add_page()
-            # PDF için font ayarı (Standard fontlarda Türkçe karakter kısıtlıdır, bu yüzden replace kullanılır)
             pdf.set_font("Arial", 'B', 14)
             pdf.cell(190, 10, "EKSIK SIPARIS LISTESI", ln=True, align='C')
-            pdf.set_font("Arial", size=10)
             pdf.ln(5)
-            # Başlıklar
-            pdf.cell(15, 8, "Sira", 1)
-            pdf.cell(45, 8, "Siparis No", 1)
-            pdf.cell(90, 8, "Musteri Adi", 1)
-            pdf.cell(30, 8, "Pers. No", 1)
-            pdf.ln()
-            # Satırlar
+            pdf.set_font("Arial", size=10)
+            pdf.cell(15, 8, "Sira", 1); pdf.cell(45, 8, "Siparis No", 1); pdf.cell(90, 8, "Musteri Adi", 1); pdf.cell(30, 8, "Pers. No", 1); pdf.ln()
+            
             for i, r in eksik_df.iterrows():
-                # Karakterleri PDF'in anlayacağı dile çeviriyoruz
+                # Karakter temizleme
                 isim_pdf = str(r['Müşteri Adı']).replace('İ','I').replace('ğ','g').replace('ü','u').replace('ş','s').replace('ö','o').replace('ç','c').replace('Ğ','G').replace('Ü','U').replace('Ş','S').replace('Ö','O').replace('Ç','C')
                 pdf.cell(15, 8, str(r['Sıra No']), 1)
                 pdf.cell(45, 8, str(r['Sipariş No']), 1)
@@ -108,9 +108,8 @@ if st.button("📊 Eksikleri Listele"):
             pdf_bytes = pdf.output(dest='S').encode('latin-1')
             st.download_button("📄 PDF İndir", data=pdf_bytes, file_name="Eksik_Siparis_Listesi.pdf", mime="application/pdf")
 
-        # --- CSV İNDİRME (Karakter Sorununu Çözen Kısım) ---
+        # --- CVS İNDİRME ---
         with col_csv:
-            # utf-8-sig: Excel'in Türkçe karakterleri tanımasını sağlayan en önemli koddur.
             csv_data = eksik_df.to_csv(index=False, encoding='utf-8-sig', sep=';')
             st.download_button("📂 CVS İndir", data=csv_data, file_name="Eksik_Siparis_Listesi.csv", mime="text/csv")
             

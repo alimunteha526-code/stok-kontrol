@@ -20,7 +20,6 @@ st.markdown("""
     .panel-header { text-align: center; color: #666; font-weight: bold; margin-bottom: 30px; }
     .stTextInput>div>div>input { border: 2px solid #FF671B !important; border-radius: 10px; height: 50px; font-size: 20px; }
     .stButton>button { width: 100%; background-color: #333333 !important; color: white !important; border-radius: 10px !important; height: 3.5em; font-weight: bold; border: none !important; }
-    .download-label { font-weight: bold; color: #333; margin-top: 10px; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -66,13 +65,13 @@ if not st.session_state.db.empty:
         else:
             st.error(f"❌ LİSTEDE YOK: {input_kod}")
 
-# --- 3. ADIM: RAPORLAMA VE İNDİRME SEÇENEKLERİ ---
+# --- 3. ADIM: RAPORLAMA VE İNDİRME ---
 st.divider()
-if st.button("📊 Eksikleri Listele ve İndirme Seçeneklerini Gör"):
+if st.button("📊 Eksikleri Listele"):
     eksik_df = st.session_state.db[~st.session_state.db['Sipariş No'].isin(st.session_state.okutulanlar)].copy()
     
     if not eksik_df.empty:
-        # Sıra No ekleme ve sütun ismini güncelleme
+        # Belgenin başına "Eksik Sipariş" başlığı gelecek şekilde tabloyu hazırla
         eksik_df.insert(0, 'Sıra No', range(1, len(eksik_df) + 1))
         
         st.warning(f"Toplam {len(eksik_df)} adet Eksik Sipariş bulundu.")
@@ -81,24 +80,16 @@ if st.button("📊 Eksikleri Listele ve İndirme Seçeneklerini Gör"):
         st.markdown("### 📥 İndirme Seçenekleri")
         d_col1, d_col2 = st.columns(2)
         
-        # 1. Excel İndirme
+        # 1. PDF İNDİRME (Tarayıcı üzerinden yazdırma yönlendirmesi)
         with d_col1:
-            output_excel = io.BytesIO()
-            with pd.ExcelWriter(output_excel, engine='xlsxwriter') as writer:
-                eksik_df.to_excel(writer, index=False, sheet_name='Eksik_Siparisler')
-            st.download_button(
-                label="Excel (.xlsx) Olarak İndir",
-                data=output_excel.getvalue(),
-                file_name="Eksik_Siparis_Listesi.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
+            st.info("📄 PDF için: Listeleme sonrası Ctrl+P yapıp 'PDF Kaydet' seçebilirsiniz.")
             
-        # 2. CSV İndirme
+        # 2. CVS (CSV) İNDİRME
         with d_col2:
-            # CSV için UTF-8 BOM ekleyerek Türkçe karakter sorununu önlüyoruz
+            # UTF-8 BOM ile Excel uyumlu CSV
             csv_data = eksik_df.to_csv(index=False, encoding='utf-8-sig', sep=';')
             st.download_button(
-                label="CSV (.csv) Olarak İndir",
+                label="CVS (.csv) Olarak İndir",
                 data=csv_data,
                 file_name="Eksik_Siparis_Listesi.csv",
                 mime="text/csv"

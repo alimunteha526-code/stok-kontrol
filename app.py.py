@@ -62,4 +62,50 @@ if not st.session_state.db.empty:
             isim = match['Müşteri Adı'].iloc[0]
             p_no = match['Personel No'].iloc[0]
             st.success(f"✅ LİSTEDE VAR \n\n **Müşteri:** {isim} | **Personel:** {p_no}")
-            st.session_
+            st.session_state.okutulanlar.add(input_kod)
+        else:
+            st.error(f"❌ LİSTEDE YOK: {input_kod}")
+
+# --- 3. ADIM: RAPORLAMA VE İNDİRME SEÇENEKLERİ ---
+st.divider()
+if st.button("📊 Eksikleri Listele ve İndirme Seçeneklerini Gör"):
+    eksik_df = st.session_state.db[~st.session_state.db['Sipariş No'].isin(st.session_state.okutulanlar)].copy()
+    
+    if not eksik_df.empty:
+        # Sıra No ekleme ve sütun ismini güncelleme
+        eksik_df.insert(0, 'Sıra No', range(1, len(eksik_df) + 1))
+        
+        st.warning(f"Toplam {len(eksik_df)} adet Eksik Sipariş bulundu.")
+        st.dataframe(eksik_df, use_container_width=True, hide_index=True)
+        
+        st.markdown("### 📥 İndirme Seçenekleri")
+        d_col1, d_col2 = st.columns(2)
+        
+        # 1. Excel İndirme
+        with d_col1:
+            output_excel = io.BytesIO()
+            with pd.ExcelWriter(output_excel, engine='xlsxwriter') as writer:
+                eksik_df.to_excel(writer, index=False, sheet_name='Eksik_Siparisler')
+            st.download_button(
+                label="Excel (.xlsx) Olarak İndir",
+                data=output_excel.getvalue(),
+                file_name="Eksik_Siparis_Listesi.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+            
+        # 2. CSV İndirme
+        with d_col2:
+            # CSV için UTF-8 BOM ekleyerek Türkçe karakter sorununu önlüyoruz
+            csv_data = eksik_df.to_csv(index=False, encoding='utf-8-sig', sep=';')
+            st.download_button(
+                label="CSV (.csv) Olarak İndir",
+                data=csv_data,
+                file_name="Eksik_Siparis_Listesi.csv",
+                mime="text/csv"
+            )
+    else:
+        st.success("Tebrikler! Eksik sipariş bulunmuyor.")
+
+if st.button("🔄 Paneli Sıfırla"):
+    st.session_state.okutulanlar = set()
+    st.rerun()

@@ -20,14 +20,12 @@ st.markdown("""
     .panel-header { text-align: center; color: #666; font-weight: bold; margin-bottom: 30px; }
     .stTextInput>div>div>input { border: 2px solid #FF671B !important; border-radius: 10px; height: 50px; font-size: 20px; }
     .stButton>button { width: 100%; background-color: #333333 !important; color: white !important; border-radius: 10px !important; height: 3.5em; font-weight: bold; border: none !important; }
-    .stButton>button:hover { background-color: #555555 !important; transform: scale(1.01); }
     </style>
     """, unsafe_allow_html=True)
 
 st.markdown("<h1>👓 ATASUN OPTİK</h1>", unsafe_allow_html=True)
-st.markdown("<p class='panel-header'>Açık Kapora Takip Paneli (Personel Destekli)</p>", unsafe_allow_html=True)
+st.markdown("<p class='panel-header'>Açık Kapora Takip Paneli</p>", unsafe_allow_html=True)
 
-# --- VERİ HAFIZASI ---
 if 'db' not in st.session_state:
     st.session_state.db = pd.DataFrame()
     st.session_state.okutulanlar = set()
@@ -43,15 +41,14 @@ with st.expander("📁 Ana Sipariş Listesini Yükle", expanded=True):
         s_isim_col = c2.selectbox("Müşteri İsim", df_temp.columns)
         s_pers_col = c3.selectbox("Personel No", df_temp.columns)
         
-        # Veriyi hazırla (Personel No dahil)
         st.session_state.db = df_temp[[s_no_col, s_isim_col, s_pers_col]].copy()
-        st.session_state.db.columns = ['kod', 'isim', 'personel_no']
-        st.session_state.db['kod'] = st.session_state.db['kod'].astype(str).str.strip().str.upper()
-        st.success(f"✅ {len(st.session_state.db)} Sipariş ve Personel Verisi Yüklendi.")
+        st.session_state.db.columns = ['Sipariş No', 'Müşteri Adı', 'Personel No']
+        st.session_state.db['Sipariş No'] = st.session_state.db['Sipariş No'].astype(str).str.strip().str.upper()
+        st.success(f"✅ {len(st.session_state.db)} Sipariş Yüklendi.")
 
 st.divider()
 
-# --- 2. ADIM: CANLI BARKOD OKUTMA ---
+# --- 2. ADIM: CANLI OKUTMA ---
 if not st.session_state.db.empty:
     with st.form(key='barkod_form', clear_on_submit=True):
         st.markdown("### 📲 Sipariş Numarasını Okutun")
@@ -59,38 +56,39 @@ if not st.session_state.db.empty:
         submit = st.form_submit_button("SORGULA")
 
     if submit and input_kod:
-        match = st.session_state.db[st.session_state.db['kod'] == input_kod]
+        match = st.session_state.db[st.session_state.db['Sipariş No'] == input_kod]
         if not match.empty:
-            isim = match['isim'].iloc[0]
-            p_no = match['personel_no'].iloc[0]
-            st.success(f"✅ LİSTEDE VAR \n\n **Müşteri:** {isim} \n\n **Sorumlu Personel:** {p_no}")
+            isim = match['Müşteri Adı'].iloc[0]
+            p_no = match['Personel No'].iloc[0]
+            st.success(f"✅ LİSTEDE VAR \n\n **Müşteri:** {isim} | **Personel:** {p_no}")
             st.session_state.okutulanlar.add(input_kod)
         else:
             st.error(f"❌ LİSTEDE YOK: {input_kod}")
 
-# --- 3. ADIM: RAPOR VE DIŞA AKTAR ---
+# --- 3. ADIM: RAPORLAMA VE EXCEL ---
 st.divider()
 col_left, col_right = st.columns(2)
 
 with col_left:
-    if st.button("📊 Eksikleri Personel Bilgisiyle Listele"):
-        eksik_df = st.session_state.db[~st.session_state.db['kod'].isin(st.session_state.okutulanlar)]
+    if st.button("📊 Eksikleri Listele"):
+        eksik_df = st.session_state.db[~st.session_state.db['Sipariş No'].isin(st.session_state.okutulanlar)].copy()
+        
         if not eksik_df.empty:
-            st.warning(f"{len(eksik_df)} Eksik Sipariş Bulundu")
-            # Tabloyu daha şık göster (Sütun isimlerini Türkçeleştir)
-            display_df = eksik_df.copy()
-            display_df.columns = ['Sipariş No', 'Müşteri İsim', 'Personel No']
-            st.dataframe(display_df, use_container_width=True)
+            # 1'den başlayan sıra numarası sütunu ekleme
+            eksik_df.insert(0, 'Sıra No', range(1, len(eksik_df) + 1))
             
-            # Excel İndirme (Personel No dahil)
+            st.warning(f"{len(eksik_df)} Eksik Sipariş Bulundu")
+            st.dataframe(eksik_df, use_container_width=True, hide_index=True)
+            
+            # Excel İndirme
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                display_df.to_excel(writer, index=False, sheet_name='Eksik_Siparis_Listesi')
+                eksik_df.to_excel(writer, index=False, sheet_name='Eksik_Siparis_Listesi')
             
             st.download_button(
-                label="📥 Eksik Listesini Excel (Personel No ile) İndir",
+                label="📥 Eksik Listesini Excel İndir",
                 data=output.getvalue(),
-                file_name="Atasun_Eksik_Siparisler_Personel_Listesi.xlsx",
+                file_name="Atasun_Eksik_Listesi.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
         else:

@@ -41,9 +41,15 @@ with st.expander("📁 Ana Sipariş Listesini Yükle", expanded=True):
         s_isim_col = c2.selectbox("Müşteri İsim", df_temp.columns)
         s_pers_col = c3.selectbox("Personel No", df_temp.columns)
         
-        st.session_state.db = df_temp[[s_no_col, s_isim_col, s_pers_col]].copy()
-        st.session_state.db.columns = ['Sipariş No', 'Müşteri Adı', 'Personel No']
-        st.session_state.db['Sipariş No'] = st.session_state.db['Sipariş No'].astype(str).str.strip().str.upper()
+        # Veriyi hazırla
+        db_df = df_temp[[s_no_col, s_isim_col, s_pers_col]].copy()
+        db_df.columns = ['Sipariş No', 'Müşteri Adı', 'Personel No']
+        
+        # .0 SORUNUNU ÇÖZME: Personel No'yu tam sayıya çevir
+        db_df['Personel No'] = pd.to_numeric(db_df['Personel No'], errors='coerce').fillna(0).astype(int).astype(str)
+        db_df['Sipariş No'] = db_df['Sipariş No'].astype(str).str.strip().str.upper()
+        
+        st.session_state.db = db_df
         st.success(f"✅ {len(st.session_state.db)} Sipariş Yüklendi.")
 
 st.divider()
@@ -71,22 +77,21 @@ if st.button("📊 Eksikleri Listele"):
     eksik_df = st.session_state.db[~st.session_state.db['Sipariş No'].isin(st.session_state.okutulanlar)].copy()
     
     if not eksik_df.empty:
-        # Belgenin başına "Eksik Sipariş" başlığı gelecek şekilde tabloyu hazırla
+        # Sıra no ekle
         eksik_df.insert(0, 'Sıra No', range(1, len(eksik_df) + 1))
         
-        st.warning(f"Toplam {len(eksik_df)} adet Eksik Sipariş bulundu.")
+        st.markdown("## 📋 EKSİK SİPARİŞ LİSTESİ")
+        st.warning(f"Toplam {len(eksik_df)} adet eksik tespit edildi.")
         st.dataframe(eksik_df, use_container_width=True, hide_index=True)
         
         st.markdown("### 📥 İndirme Seçenekleri")
         d_col1, d_col2 = st.columns(2)
         
-        # 1. PDF İNDİRME (Tarayıcı üzerinden yazdırma yönlendirmesi)
         with d_col1:
-            st.info("📄 PDF için: Listeleme sonrası Ctrl+P yapıp 'PDF Kaydet' seçebilirsiniz.")
+            st.info("📄 PDF: Yazdır (Ctrl+P) yaparak PDF kaydedebilirsiniz.")
             
-        # 2. CVS (CSV) İNDİRME
         with d_col2:
-            # UTF-8 BOM ile Excel uyumlu CSV
+            # CVS (CSV) Aktarımı - UTF-8 BOM ve Noktalı Virgül
             csv_data = eksik_df.to_csv(index=False, encoding='utf-8-sig', sep=';')
             st.download_button(
                 label="CVS (.csv) Olarak İndir",

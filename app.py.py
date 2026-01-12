@@ -20,6 +20,7 @@ st.markdown("""
     .panel-header { text-align: center; color: #666; font-weight: bold; margin-bottom: 30px; }
     .stTextInput>div>div>input { border: 2px solid #FF671B !important; border-radius: 10px; height: 50px; font-size: 20px; }
     .stButton>button { width: 100%; background-color: #333333 !important; color: white !important; border-radius: 10px !important; height: 3.5em; font-weight: bold; border: none !important; }
+    .download-label { font-weight: bold; color: #333; margin-top: 10px; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -61,40 +62,4 @@ if not st.session_state.db.empty:
             isim = match['Müşteri Adı'].iloc[0]
             p_no = match['Personel No'].iloc[0]
             st.success(f"✅ LİSTEDE VAR \n\n **Müşteri:** {isim} | **Personel:** {p_no}")
-            st.session_state.okutulanlar.add(input_kod)
-        else:
-            st.error(f"❌ LİSTEDE YOK: {input_kod}")
-
-# --- 3. ADIM: RAPORLAMA VE EXCEL ---
-st.divider()
-col_left, col_right = st.columns(2)
-
-with col_left:
-    if st.button("📊 Eksikleri Listele"):
-        eksik_df = st.session_state.db[~st.session_state.db['Sipariş No'].isin(st.session_state.okutulanlar)].copy()
-        
-        if not eksik_df.empty:
-            # 1'den başlayan sıra numarası sütunu ekleme
-            eksik_df.insert(0, 'Sıra No', range(1, len(eksik_df) + 1))
-            
-            st.warning(f"{len(eksik_df)} Eksik Sipariş Bulundu")
-            st.dataframe(eksik_df, use_container_width=True, hide_index=True)
-            
-            # Excel İndirme
-            output = io.BytesIO()
-            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                eksik_df.to_excel(writer, index=False, sheet_name='Eksik_Siparis_Listesi')
-            
-            st.download_button(
-                label="📥 Eksik Listesini Excel İndir",
-                data=output.getvalue(),
-                file_name="Atasun_Eksik_Listesi.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
-        else:
-            st.success("Tüm siparişler tamamlandı!")
-
-with col_right:
-    if st.button("🔄 Paneli Sıfırla"):
-        st.session_state.okutulanlar = set()
-        st.rerun()
+            st.session_

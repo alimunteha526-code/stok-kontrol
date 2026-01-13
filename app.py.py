@@ -32,7 +32,7 @@ if 'db' not in st.session_state:
 
 # --- 1. ADIM: EXCEL YÜKLEME ---
 with st.expander("📁 Ana Sipariş Listesini Yükle", expanded=True):
-    yuklenen_dosya = st.file_uploader("", type=['xlsx'])
+    yuklenen_dosya = st.file_uploader("", type=['ods',xlsx'])
     if yuklenen_dosya:
         df_temp = pd.read_excel(yuklenen_dosya)
         c1, c2, c3 = st.columns(3)
@@ -120,3 +120,4 @@ if st.button("📊 Eksikleri Listele"):
 if st.button("🔄 Paneli Sıfırla"):
     st.session_state.okutulanlar = set()
     st.rerun()
+

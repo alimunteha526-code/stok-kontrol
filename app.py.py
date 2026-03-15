@@ -11,10 +11,10 @@ st.write("Hesaplama yapmak için gerekli verileri giriniz.")
 col1, col2 = st.columns(2)
 
 with col1:
-    girdi_1 = st.number_input("Zayi Adeti:", min_value=0.0, step=0.01, format="%.2f", key="g1")
+    girdi_1 = st.number_input("Zayi Adeti:", min_value=0.0, step=0.01, format="%.2f", key="zayi")
 
 with col2:
-    girdi_2 = st.number_input("Çıkarılacak (işlem yapılacak) rakam:", min_value=0.0, step=0.01, format="%.2f", key="g2")
+    girdi_2 = st.number_input("Kesilen Cam Adeti:", min_value=0.0, step=0.01, format="%.2f", key="cam")
 
 # Hesaplama Butonu
 if st.button("Hesaplamayı Başlat"):
@@ -22,7 +22,7 @@ if st.button("Hesaplamayı Başlat"):
         # 1. Aşama: Ana rakamı hesapla (%5,80 üzerinden)
         ana_rakam = girdi_1 / 0.058
         
-        # 2. Aşama: Ana rakamdan girdi_2'yi çıkar ve 2'ye böl (Nihai Sonuç)
+        # 2. Aşama: Ana rakamdan kesilen cam adetini çıkar ve 2'ye böl (Nihai Sonuç)
         nihai_sonuc = (ana_rakam - girdi_2) / 2
         
         # 3. Aşama: Mağazada Hatasız Kesilmesi Gereken Föy Adeti (17'ye bölüm)

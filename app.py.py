@@ -1,30 +1,43 @@
 import streamlit as st
 
-# Sayfa ayarları
-st.set_page_config(page_title="Ters Yüzde Hesaplayıcı", layout="centered")
+# Sayfa tasarımı
+st.set_page_config(page_title="Ters Yüzde ve Fark Hesaplayıcı", layout="centered")
 
-# Başlık ve Açıklama
-st.title("📊 %5,80 Hesaplama Aracı")
-st.write("Girdiğiniz sayının, hangi rakamın %5,80'i olduğunu anında hesaplar.")
+# Başlık ve açıklama
+st.title("🧮 Gelişmiş %5,80 Hesaplama")
+st.write("Verilen sayının %5,80 olduğu ana rakamı bulur ve aradaki farkı hesaplar.")
 
 # Kullanıcı Girişi
-number_input = st.number_input("Lütfen elinizdeki sayıyı giriniz:", min_value=0.0, step=0.01, format="%.2f")
+input_val = st.number_input("Elinizdeki sayıyı giriniz:", min_value=0.0, step=0.01, format="%.2f")
 
-# Hesaplama Butonu
-if st.button("Hesapla"):
-    if number_input > 0:
-        # %5,80 olduğu için 0.058'e bölüyoruz
-        result = number_input / 0.058
+if st.button("Hesaplamayı Başlat"):
+    if input_val > 0:
+        # 1. Adım: Ana rakamı bul (%5,80'den geri git)
+        ana_rakam = input_val / 0.058
         
-        # Sonuç Ekranı
-        st.success(f"Girdiğiniz {number_input:.2f} sayısı, aşağıdaki rakamın %5,80'idir:")
-        st.metric(label="Bulunan Ana Rakam", value=f"{result:,.2f}")
+        # 2. Adım: Ana rakamdan girdi değerini çıkar
+        fark = ana_rakam - input_val
         
-        # Detaylı Bilgi
-        st.info(f"Doğrulama: {result:,.2f} x 0,058 = {number_input:.2f}")
+        # Sonuçları yan yana sütunlarda gösterelim
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.metric("Girdiğiniz Sayı", f"{input_val:,.2f}")
+        
+        with col2:
+            st.metric("Bulunan Ana Rakam", f"{ana_rakam:,.2f}")
+            
+        with col3:
+            st.metric("Aradaki Fark", f"{fark:,.2f}", delta_color="normal")
+
+        # Detaylı özet alanı
+        st.markdown("---")
+        st.info(f"**İşlem Özeti:**")
+        st.write(f"- {ana_rakam:,.2f} sayısının %5,80'i: **{input_val:,.2f}**")
+        st.write(f"- Ana rakamdan girdi çıkarıldığında kalan: **{fark:,.2f}**")
+        
     else:
-        st.warning("Lütfen 0'dan büyük bir sayı giriniz.")
+        st.warning("Lütfen 0'dan büyük bir değer girerek işleme devam edin.")
 
-# Alt Bilgi
-st.markdown("---")
-st.caption("Streamlit ile hızlı hesaplama modülü.")
+# Alt bilgi
+st.caption("Veri doğrulama: (Girdi / 0.058) - Girdi")

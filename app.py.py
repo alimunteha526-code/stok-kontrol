@@ -3,7 +3,7 @@ import streamlit as st
 # Sayfa ayarları
 st.set_page_config(page_title="Zayi Hedefi Hesap Tablosu", layout="centered", page_icon="🎯")
 
-# Başlık ve Açıklama
+# Başlık
 st.title("🎯 Zayi Hedefi Hesap Tablosu")
 st.write("Hesaplama yapmak için gerekli verileri giriniz.")
 
@@ -25,7 +25,7 @@ if st.button("Hesaplamayı Başlat"):
         # 2. Aşama: Ana rakamdan girdi_2'yi çıkar ve 2'ye böl (Nihai Sonuç)
         nihai_sonuc = (ana_rakam - girdi_2) / 2
         
-        # 3. Aşama: Nihai sonucu 17'ye böl (Föy Adeti)
+        # 3. Aşama: Föy Adeti (17'ye bölüm)
         foy_adeti = nihai_sonuc / 17
         
         st.divider()
@@ -43,25 +43,7 @@ if st.button("Hesaplamayı Başlat"):
         
         # Mağazada Hatasız Kesilmesi Gereken Föy Adeti
         st.subheader("📋 Mağazada Hatasız Kesilmesi Gereken Föy Adeti")
-        # Sonuç tam sayı olması gerekiyorsa :.0f yapabiliriz, şu an :.2f (küsuratlı) bıraktım
         st.success(f"Gerekli Föy Adeti: **{foy_adeti:,.2f}**")
-        
-        # Detaylı İşlem Dökümü
-        with st.expander("İşlem Detaylarını Görüntüle"):
-            st.table({
-                "İşlem Basamağı": [
-                    "Ana Rakam Hesabı (Girdi / 0,058)", 
-                    "Çıkartma Sonucu (Ana Rakam - Girdi 2)", 
-                    "İkiye Bölünmüş Nihai Sonuç", 
-                    "Mağaza Föy Hedefi (Sonuç / 17)"
-                ],
-                "Değer": [
-                    f"{ana_rakam:,.2f}", 
-                    f"{ana_rakam - girdi_2:,.2f}", 
-                    f"{nihai_sonuc:,.2f}", 
-                    f"{foy_adeti:,.2f}"
-                ]
-            })
         
     else:
         st.error("Lütfen ilk kutuya geçerli bir sayı giriniz.")

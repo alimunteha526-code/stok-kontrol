@@ -11,10 +11,11 @@ st.write("Operasyonel verileri girerek hedeflerinizi hesaplayabilirsiniz.")
 col1, col2 = st.columns(2)
 
 with col1:
-    girdi_1 = st.number_input("Zayi Adeti:", min_value=0.0, step=0.01, format="%.2f", key="zayi")
+    # Sayı girişlerini tam sayı (step=1) olarak ayarladık
+    girdi_1 = st.number_input("Zayi Adeti:", min_value=0, step=1, key="zayi")
 
 with col2:
-    girdi_2 = st.number_input("Kesilen Cam Adeti:", min_value=0.0, step=0.01, format="%.2f", key="cam")
+    girdi_2 = st.number_input("Kesilen Cam Adeti:", min_value=0, step=1, key="cam")
 
 # Hesaplama Butonu
 if st.button("Hesaplamayı Başlat"):
@@ -30,20 +31,22 @@ if st.button("Hesaplamayı Başlat"):
         
         st.divider()
         
-        # Sonuç Kartları
+        # Sonuç Kartları - Sıfırları kaldırmak için int() veya :.0f kullanıyoruz
         res_col1, res_col2 = st.columns(2)
         
         with res_col1:
-            st.metric("Kesilmesi Gereken Toplam Cam Adeti", f"{toplam_cam_hedefi:,.2f}")
+            # Yuvarlayarak tam sayı gösteriyoruz
+            st.metric("Kesilmesi Gereken Toplam Cam Adeti", f"{toplam_cam_hedefi:,.0f}")
             
         with res_col2:
-            st.metric("Kesilmesi Gereken Toplam Föy Adeti", f"{toplam_foy_adeti:,.2f}")
+            st.metric("Kesilmesi Gereken Toplam Föy Adeti", f"{toplam_foy_adeti:,.0f}")
         
         st.write("##") 
         
         # Nihai Hedef
         st.subheader("📋 Mağazada Hatasız Kesilmesi Gereken Föy Adeti")
-        st.success(f"Gerekli Föy Adeti (Birim Başına): **{magaza_foy_hedefi:,.2f}**")
+        # Sonucu en yakın tam sayıya yuvarladık
+        st.success(f"Gerekli Föy Adeti (Birim Başına): **{magaza_foy_hedefi:,.0f}**")
         
     else:
         st.error("Lütfen 'Zayi Adeti' kısmına geçerli bir sayı giriniz.")
